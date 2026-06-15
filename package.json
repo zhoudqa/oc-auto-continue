@@ -1,18 +1,31 @@
 {
-  "name": "@zhoudqa/auto-continue",
+  "name": "@zhoudqa/oc-auto-continue",
   "version": "0.0.1",
   "description": "OpenCode plugin that auto-sends continue on session errors",
   "main": "./dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": ["dist"],
   "scripts": {
+    "prepublishOnly": "bun run build",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "clean": "rm -rf dist"
   },
+  "keywords": ["opencode", "plugin", "auto-continue"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoudqa/auto-continue.git"
+  },
+  "homepage": "https://github.com/zhoudqa/auto-continue#readme",
+  "bugs": {
+    "url": "https://github.com/zhoudqa/auto-continue/issues"
+  },
   "dependencies": {
     "jsonc-parser": "^3.3.1",
     "zod": "^3.23.0"
