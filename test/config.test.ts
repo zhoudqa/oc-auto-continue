@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { AutoContinueConfigSchema, AUTO_CONTINUE_DEFAULTS } from "../src/config/schema.js"
+import { loadConfig } from "../src/config.js"
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 
 describe("AutoContinueConfigSchema", () => {
   test("should accept valid full config", () => {
@@ -50,5 +54,35 @@ describe("AutoContinueConfigSchema", () => {
       windowMs: 60000,
       ignoredErrorTypes: ["MessageAbortedError"],
     })
+  })
+})
+
+describe("loadConfig", () => {
+  test("should return defaults when no config files exist", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    const config = loadConfig(dir)
+    expect(config).toEqual(AUTO_CONTINUE_DEFAULTS)
+  })
+
+  test("should load project-level config", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    const opencodeDir = join(dir, ".opencode")
+    mkdirSync(opencodeDir, { recursive: true })
+    writeFileSync(join(opencodeDir, "auto-continue.jsonc"), JSON.stringify({ text: "go on", delay: 2000 }))
+
+    const config = loadConfig(dir)
+    expect(config.text).toBe("go on")
+    expect(config.delay).toBe(2000)
+    // Other fields stay at defaults
+    expect(config.maxContinues).toBe(5)
+  })
+
+  test("should reject invalid config", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    const opencodeDir = join(dir, ".opencode")
+    mkdirSync(opencodeDir, { recursive: true })
+    writeFileSync(join(opencodeDir, "auto-continue.jsonc"), JSON.stringify({ maxContinues: -1 }))
+
+    expect(() => loadConfig(dir)).toThrow()
   })
 })
