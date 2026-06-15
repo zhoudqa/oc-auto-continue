@@ -1,7 +1,7 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import type { AutoContinueConfig } from "./config/schema.js"
 
-type ErrorData = { errorMessage: string; timestamp: number }
+type ErrorData = { errorMessage: string; contextTooLarge: boolean; timestamp: number }
 
 const STALE_MS = 60_000
 
