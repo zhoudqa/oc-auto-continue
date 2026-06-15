@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test, afterEach } from "bun:test"
 import { AutoContinueConfigSchema, AUTO_CONTINUE_DEFAULTS } from "../src/config/schema.js"
 import { loadConfig } from "../src/config.js"
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs"
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
@@ -58,14 +58,24 @@ describe("AutoContinueConfigSchema", () => {
 })
 
 describe("loadConfig", () => {
+  let tempDirs: string[] = []
+  afterEach(() => {
+    for (const dir of tempDirs) {
+      rmSync(dir, { recursive: true, force: true })
+    }
+    tempDirs = []
+  })
+
   test("should return defaults when no config files exist", () => {
     const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    tempDirs.push(dir)
     const config = loadConfig(dir)
     expect(config).toEqual(AUTO_CONTINUE_DEFAULTS)
   })
 
   test("should load project-level config", () => {
     const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    tempDirs.push(dir)
     const opencodeDir = join(dir, ".opencode")
     mkdirSync(opencodeDir, { recursive: true })
     writeFileSync(join(opencodeDir, "auto-continue.jsonc"), JSON.stringify({ text: "go on", delay: 2000 }))
@@ -79,6 +89,7 @@ describe("loadConfig", () => {
 
   test("should reject invalid config", () => {
     const dir = mkdtempSync(join(tmpdir(), "ac-test-"))
+    tempDirs.push(dir)
     const opencodeDir = join(dir, ".opencode")
     mkdirSync(opencodeDir, { recursive: true })
     writeFileSync(join(opencodeDir, "auto-continue.jsonc"), JSON.stringify({ maxContinues: -1 }))

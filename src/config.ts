@@ -11,7 +11,9 @@ import {
 function loadJsoncFile(filePath: string): Record<string, unknown> | null {
   if (!existsSync(filePath)) return null
   const raw = readFileSync(filePath, "utf-8")
-  return parseJsonc(raw) as Record<string, unknown> | null
+  const result = parseJsonc(raw)
+  if (typeof result !== "object" || result === null || Array.isArray(result)) return null
+  return result as Record<string, unknown>
 }
 
 function deepMerge(
