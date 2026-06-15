@@ -5,6 +5,14 @@ type ErrorData = { errorMessage: string; timestamp: number }
 
 const STALE_MS = 60_000
 
+function isContextTooLargeError(
+  errorMessage: string,
+  patterns: string[],
+): boolean {
+  const msg = errorMessage.toLowerCase()
+  return patterns.some((p) => msg.includes(p.toLowerCase()))
+}
+
 export function createHooks(
   client: PluginInput["client"],
   config: AutoContinueConfig,
@@ -66,7 +74,12 @@ export function createHooks(
           if (now - data.timestamp > STALE_MS) erroredSessions.delete(sid)
         }
 
-        erroredSessions.set(sessionID, { errorMessage: getErrorMessage(error), timestamp: now })
+        const errorMessage = getErrorMessage(error)
+        erroredSessions.set(sessionID, {
+          errorMessage,
+          contextTooLarge: isContextTooLargeError(errorMessage, config.contextTooLargePatterns),
+          timestamp: now,
+        })
         return
       }
 
@@ -79,7 +92,8 @@ export function createHooks(
 
         const sessionID = props.sessionID
         if (typeof sessionID !== "string") return
-        if (!erroredSessions.has(sessionID)) return
+        const data = erroredSessions.get(sessionID)
+        if (!data) return
 
         erroredSessions.delete(sessionID)
         incrementContinueCount(sessionID)
@@ -87,6 +101,15 @@ export function createHooks(
         const timer = setTimeout(async () => {
           activeTimers.delete(sessionID)
           try {
+            if (data.contextTooLarge) {
+              try {
+                await (client.tui as any).executeCommand({
+                  body: { command: "session.compact" },
+                })
+              } catch {
+                // Compaction failure is non-critical
+              }
+            }
             await (client.session as any).prompt({
               path: { id: sessionID },
               body: {

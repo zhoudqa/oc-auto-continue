@@ -13,6 +13,7 @@ describe("AutoContinueConfigSchema", () => {
       maxContinues: 3,
       windowMs: 30000,
       ignoredErrorTypes: ["MessageAbortedError", "SomeError"],
+      contextTooLargePatterns: ["custom pattern"],
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -21,6 +22,7 @@ describe("AutoContinueConfigSchema", () => {
       expect(result.data.maxContinues).toBe(3)
       expect(result.data.windowMs).toBe(30000)
       expect(result.data.ignoredErrorTypes).toEqual(["MessageAbortedError", "SomeError"])
+      expect(result.data.contextTooLargePatterns).toEqual(["custom pattern"])
     }
   })
 
@@ -29,10 +31,17 @@ describe("AutoContinueConfigSchema", () => {
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.text).toBe("继续")
-      expect(result.data.delay).toBe(500)
+      expect(result.data.delay).toBe(1000)
       expect(result.data.maxContinues).toBe(5)
       expect(result.data.windowMs).toBe(60000)
       expect(result.data.ignoredErrorTypes).toEqual(["MessageAbortedError"])
+      expect(result.data.contextTooLargePatterns).toEqual([
+        "请求上下文过大",
+        "context length",
+        "too large",
+        "maximum context",
+        "token limit",
+      ])
     }
   })
 
@@ -49,10 +58,17 @@ describe("AutoContinueConfigSchema", () => {
   test("defaults should match AUTO_CONTINUE_DEFAULTS", () => {
     expect(AUTO_CONTINUE_DEFAULTS).toEqual({
       text: "继续",
-      delay: 500,
+      delay: 1000,
       maxContinues: 5,
       windowMs: 60000,
       ignoredErrorTypes: ["MessageAbortedError"],
+      contextTooLargePatterns: [
+        "请求上下文过大",
+        "context length",
+        "too large",
+        "maximum context",
+        "token limit",
+      ],
     })
   })
 })

@@ -34,7 +34,7 @@ describe("createHooks", () => {
       status: { type: "idle" },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
 
     expect(client.calls.length).toBe(1)
     expect(client.calls[0].path.id).toBe("sess-1")
@@ -47,7 +47,7 @@ describe("createHooks", () => {
       status: { type: "idle" },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(0)
   })
 
@@ -61,7 +61,7 @@ describe("createHooks", () => {
       status: { type: "idle" },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(0)
   })
 
@@ -70,7 +70,7 @@ describe("createHooks", () => {
       error: { name: "ApiError", data: { message: "err" } },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(0)
   })
 
@@ -79,7 +79,7 @@ describe("createHooks", () => {
       sessionID: "sess-1",
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(0)
   })
 
@@ -97,7 +97,7 @@ describe("createHooks", () => {
       status: { type: "idle" },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(1)
   })
 
@@ -115,9 +115,32 @@ describe("createHooks", () => {
       status: { type: "idle" },
     }))
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 1100))
     expect(client.calls.length).toBe(1)
     expect(client.calls[0].path.id).toBe("sess-1")
+  })
+
+  test("should trigger compaction then send continue for context too large error", async () => {
+    const execCalls: string[] = []
+    const localClient = {
+      session: { prompt: async () => execCalls.push("prompt") },
+      tui: { executeCommand: async (opts: any) => execCalls.push(`exec:${opts.body.command}`) },
+    }
+    const localHooks = createHooks(localClient as any, { ...AUTO_CONTINUE_DEFAULTS, delay: 10 })
+
+    await localHooks.event!(makeEvent("session.error", {
+      sessionID: "sess-1",
+      error: { name: "ApiError", data: { message: "请求上下文过大" } },
+    }))
+    await localHooks.event!(makeEvent("session.status", {
+      sessionID: "sess-1",
+      status: { type: "idle" },
+    }))
+
+    await new Promise((r) => setTimeout(r, 50))
+    expect(execCalls.length).toBe(2)
+    expect(execCalls[0]).toBe("exec:session.compact")
+    expect(execCalls[1]).toBe("prompt")
   })
 
   test("should stop after maxContinues in time window", async () => {
