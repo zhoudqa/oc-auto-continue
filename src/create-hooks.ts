@@ -1,7 +1,9 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import type { AutoContinueConfig } from "./config/schema.js"
 
-type ErrorData = { errorMessage: string }
+type ErrorData = { errorMessage: string; timestamp: number }
+
+const STALE_MS = 60_000
 
 export function createHooks(
   client: PluginInput["client"],
@@ -9,6 +11,7 @@ export function createHooks(
 ): Hooks {
   const erroredSessions = new Map<string, ErrorData>()
   const continueCounts = new Map<string, { count: number; windowStart: number }>()
+  const activeTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   function isContinueLoop(sessionID: string): boolean {
     const entry = continueCounts.get(sessionID)
@@ -58,7 +61,12 @@ export function createHooks(
         if (config.ignoredErrorTypes.includes(errorName)) return
         if (isContinueLoop(sessionID)) return
 
-        erroredSessions.set(sessionID, { errorMessage: getErrorMessage(error) })
+        const now = Date.now()
+        for (const [sid, data] of erroredSessions) {
+          if (now - data.timestamp > STALE_MS) erroredSessions.delete(sid)
+        }
+
+        erroredSessions.set(sessionID, { errorMessage: getErrorMessage(error), timestamp: now })
         return
       }
 
@@ -76,7 +84,8 @@ export function createHooks(
         erroredSessions.delete(sessionID)
         incrementContinueCount(sessionID)
 
-        setTimeout(async () => {
+        const timer = setTimeout(async () => {
+          activeTimers.delete(sessionID)
           try {
             await (client.session as any).prompt({
               path: { id: sessionID },
@@ -88,6 +97,7 @@ export function createHooks(
             // Ignore send failures
           }
         }, config.delay)
+        activeTimers.set(sessionID, timer)
       }
     },
   }
